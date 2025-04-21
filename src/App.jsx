@@ -61,8 +61,8 @@ function App() {
       {pathname !== "/login" && <HomePage />}
       <div className="flex-grow w-full">
         <Routes>
-          <Route path="/login" element={<AuthForm />} />
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/" element={<AuthForm />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/analysis" element={<ExpenseIncomeVisualization />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
