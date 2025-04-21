@@ -19,7 +19,7 @@ export default function AuthForm() {
 
   if (userData) {
     console.log(userData);
-    navigate("/");
+    navigate("/dashboard");
   }
 
   const handleInputChange = (e) => {
@@ -55,9 +55,10 @@ export default function AuthForm() {
       if (isLogin) {
         localStorage.setItem("yoyo_token", response.data.token);
         setToken(response.data.token);
+        
         setUserData(response.data.userDetails);
 
-        navigate("/");
+        navigate("/dashboard");
       }
 
       // Here you might handle redirection or token storage
