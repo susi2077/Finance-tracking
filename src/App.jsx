@@ -58,7 +58,7 @@ function App() {
 
   return (
     <div className="w-full h-[100vh] relative flex ">
-      {pathname !== "/login" && <HomePage />}
+      {pathname !== "/" && <HomePage />}
       <div className="flex-grow w-full">
         <Routes>
           <Route path="/" element={<AuthForm />} />
