@@ -15,8 +15,7 @@ import {
 import axios from "axios";
 import endpoint from "../api";
 import Charts from "./RechartComponents/Charts";
-import { getCurrencySymbol, getCurrencyCode } from "../CurrencyUtils";
-import { currencyConverter } from "../CurrencyUtils";
+import { getCurrencySymbol, getCurrencyCode,currencyConverter } from "../CurrencyUtils";
 
 const ExpenseIncomeVisualization = () => {
   const {
