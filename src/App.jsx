@@ -18,6 +18,7 @@ import ExpenseIncomeVisualization from "./HomeComponents/ExpenseIncomeVisualizat
 import Settings from "./HomeComponents/Setting";
 import AuthForm from "./AuthComponent/AuthComponent";
 import Dashboard from "./HomeComponents/Dashboard";
+import Transactions from "./Transactions";
 
 function App() {
   const {
@@ -46,7 +47,7 @@ function App() {
       console.log(error);
       localStorage.removeItem("yoyo_token");
       setToken(null);
-      navigate("/login");
+      navigate("/");
     }
   };
 
@@ -62,7 +63,8 @@ function App() {
       <div className="flex-grow w-full">
         <Routes>
           <Route path="/" element={<AuthForm />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Transactions/>} />
+          <Route path="/transactions" element={< Dashboard/>} />
           <Route path="/analysis" element={<ExpenseIncomeVisualization />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>

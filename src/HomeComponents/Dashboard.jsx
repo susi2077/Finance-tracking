@@ -31,9 +31,8 @@ import {
 import axios from "axios";
 import endpoint from "../api";
 import MyContext from "../Context";
-import { getCurrencySymbol } from "../currencyUtils";
-import { currencyConverter } from "../CurrencyConverter";
-Book;
+import { getCurrencySymbol, currencyConverter, getCurrencyCode } from "../CurrencyUtils";
+
 const Dashboard = () => {
   const {
     transactions,
@@ -48,8 +47,11 @@ const Dashboard = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [filteredTransactions, setFilteredTransactions] = useState([]);
+  const [preferredCurrency, setPreferredCurrency] = useState();
   const [groupedTransactions, setGroupedTransactions] = useState([]);
 
+  const userId = localStorage.getItem("userId");
+  
   // Initialize current month to today's month
   useEffect(() => {
     if (!currentMonth) {
@@ -58,7 +60,7 @@ const Dashboard = () => {
       const month = today.getMonth() + 1;
       setCurrentMonth(`${year}-${month.toString().padStart(2, "0")}`);
     }
-  }, []);
+  }, [currentMonth, setCurrentMonth]);
 
   // Get month and year from currentMonth string
   const getMonthDetails = () => {
@@ -117,43 +119,93 @@ const Dashboard = () => {
   const fetchAllTransaction = async () => {
     setIsLoading(true);
     try {
+      // Make sure we have a userId before making the request
+      if (!userId) {
+        console.error("No user ID available, cannot fetch transactions");
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log("Fetching transactions for user:", userId);
       const response = await axios.get(
-        `${endpoint}/transaction/get-all-transaction/${userData?._id}`
+        `${endpoint}/transaction/get-all-transaction/${userId}`, 
+        {
+          headers: {
+            'ngrok-skip-browser-warning': 'true' 
+          }
+        }
       );
 
-      // console.log(response);
+      console.log("Transaction response data:", response.data);
 
-      setTransactions(response.data.transactions);
+      if (response.data && response.data.transactions) {
+        setTransactions(response.data.transactions);
+        setPreferredCurrency(response.data.preferredCurrency);
+        console.log(`Set ${response.data.transactions.length} transactions`);
+      } else {
+        console.log("No transactions found in response");
+        setTransactions([]);
+      }
       setIsLoading(false);
     } catch (error) {
-      console.log(error);
+      console.error("Error fetching transactions:", error);
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (userData?._id) fetchAllTransaction();
-    fetchAllTransaction();
-  }, [userData]);
 
+  console.log(transactions)
+  // Only fetch transactions once when userId is available
   useEffect(() => {
-    if (transactions && transactions.length > 0) {
-      const convertedTransactions = transactions.map((transaction) => ({
-        ...transaction,
-        amount: currencyConverter(
-          transaction.amount,
-          transaction.currency,
-          userData?.preferredCurrency
-        ),
-      }));
+    if (userId) {
+      fetchAllTransaction();
+    }
+  }, [userId]);
+
+  // Process transactions when they change or when userData changes
+  useEffect(() => {
+    if (transactions && transactions.length > 0 && preferredCurrency) {
+      console.log("Processing transactions:", transactions.length);
+      console.log("User preferred currency:", preferredCurrency);
+      
+      const convertedTransactions = transactions.map((transaction) => {
+        // Make sure the transaction amount is a number
+        const originalAmount = parseFloat(transaction.amount);
+        
+        // Make sure we have valid currency codes
+        const fromCurrency = getCurrencyCode(transaction.currency) || 'NPR';
+        const toCurrency = getCurrencyCode(preferredCurrency) || 'NPR';
+        
+        // Log the conversion details for debugging
+        console.log(`Transaction before conversion: ${originalAmount} ${fromCurrency}`);
+        
+        const convertedAmount = currencyConverter(
+          originalAmount,
+          fromCurrency,
+          toCurrency
+        );
+        
+        console.log(`Transaction after conversion: ${convertedAmount} ${toCurrency}`);
+        
+        return {
+          ...transaction,
+          amount: convertedAmount,
+          // Store original amount and currency for reference
+          originalAmount: originalAmount,
+          originalCurrency: fromCurrency
+        };
+      });
 
       // Filter transactions by current month
       const filTransaction = convertedTransactions.filter((transaction) => {
         if (!currentMonth) return true;
         return transaction.date.startsWith(currentMonth);
       });
+      
+      console.log(`Filtered to ${filTransaction.length} transactions for ${currentMonth}`);
       setFilteredTransactions(filTransaction);
 
+      // Group transactions by date
       const groupTransactions = filTransaction.reduce((acc, transaction) => {
         const date = transaction.date;
         if (!acc[date]) {
@@ -162,19 +214,24 @@ const Dashboard = () => {
         acc[date].push(transaction);
         return acc;
       }, {});
+      
+      console.log("Grouped transactions by date:", Object.keys(groupTransactions).length);
       setGroupedTransactions(groupTransactions);
-      // console.log("The converted transaction", groupTransactions);
+    } else {
+      console.log("No transactions to process or missing user currency preferences");
+      setFilteredTransactions([]);
+      setGroupedTransactions({});
     }
-  }, [transactions, userData, currentMonth]); // Runs when transactions change
+  }, [transactions, userData, currentMonth]);
 
   // Calculate totals
   const income = filteredTransactions
     .filter((t) => t.type === "income")
-    .reduce((sum, t) => sum + t.amount, 0);
+    .reduce((sum, t) => sum + parseFloat(t.amount), 0);
 
   const expenses = filteredTransactions
     .filter((t) => t.type === "expense")
-    .reduce((sum, t) => sum + t.amount, 0);
+    .reduce((sum, t) => sum + parseFloat(t.amount), 0);
 
   const balance = income - expenses;
 
@@ -202,7 +259,6 @@ const Dashboard = () => {
       healthcare: { Icon: Heart, color: "#F06292" },
       utilities: { Icon: Droplet, color: "#03A9F4" },
       internet: { Icon: Wifi, color: "#00BCD4" },
-      // rent: {},
     };
 
     // If category is not found in the map, return a default icon
@@ -256,8 +312,6 @@ const Dashboard = () => {
                   <p className="text-2xl font-bold text-green-700">
                     {getCurrencySymbol(userData?.preferredCurrency)}
                     {income.toFixed(2)}
-
-                    {/* {convertCurrency(userData.preferredCurrency, income, )} */}
                   </p>
                 </div>
               </div>
@@ -457,7 +511,7 @@ const Dashboard = () => {
                                         {getCurrencySymbol(
                                           userData?.preferredCurrency
                                         )}
-                                        {t.amount.toFixed(2)}
+                                        {parseFloat(t.amount).toFixed(2)}
                                       </span>
                                     </div>
                                   </div>

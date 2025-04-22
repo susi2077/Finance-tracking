@@ -51,16 +51,30 @@ const HomePage = () => {
           <ul>
             <li>
               <Link
-                to="/"
+                to="/dashboard"
                 className={`block px-4 py-3 text-white hover:bg-blue-600 transition-all ease-in-out duration-200 rounded-md my-2 ${
                   pathName == "/" && "bg-blue-600"
                 } `}
                 onClick={() => {
                   setMenuOpen(false);
-                  setPathname("/");
+                  setPathname("/dashboard");
                 }}
               >
                 Dashboard
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/transactions"
+                className={`block px-4 py-3 text-white hover:bg-blue-600 transition-all ease-in-out duration-200 rounded-md my-2 ${
+                  pathName == "/transactions" && "bg-blue-600"
+                } `}
+                onClick={() => {
+                  setMenuOpen(false);
+                  setPathname("/transactions");
+                }}
+              >
+                Transactions
               </Link>
             </li>
             <li>

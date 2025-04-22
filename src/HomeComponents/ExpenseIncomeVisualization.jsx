@@ -15,8 +15,8 @@ import {
 import axios from "axios";
 import endpoint from "../api";
 import Charts from "./RechartComponents/Charts";
-import { getCurrencySymbol } from "../currencyUtils.js";
-import { currencyConverter } from "../CurrencyConverter.js";
+import { getCurrencySymbol, getCurrencyCode } from "../CurrencyUtils";
+import { currencyConverter } from "../CurrencyUtils";
 
 const ExpenseIncomeVisualization = () => {
   const {
@@ -26,11 +26,14 @@ const ExpenseIncomeVisualization = () => {
     setCurrentMonth,
     setTransactions,
   } = useContext(MyContext);
-  console.log(userData)
+  
   const [activeType, setActiveType] = useState("expense");
   const [activeChart, setActiveChart] = useState("pie");
   const [isLoading, setIsLoading] = useState(false);
   const [filteredTransactions, setFilteredTransactions] = useState([]);
+  const [preferredCurrency, setPreferredCurrency] = useState();
+
+  const userId = localStorage.getItem("userId");
 
   // Initialize current month to today's month
   useEffect(() => {
@@ -40,28 +43,45 @@ const ExpenseIncomeVisualization = () => {
       const month = today.getMonth() + 1;
       setCurrentMonth(`${year}-${month.toString().padStart(2, "0")}`);
     }
-  }, []);
+  }, [currentMonth, setCurrentMonth]);
 
   const fetchAllTransaction = async () => {
     setIsLoading(true);
     try {
+      if (!userId) {
+        console.error("No user ID available, cannot fetch transactions");
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log("Fetching transactions for user:", userId);
       const response = await axios.get(
-        `${endpoint}/transaction/get-all-transaction/${userData?._id}`
+        `${endpoint}/transaction/get-all-transaction/${userId}`, 
+        {
+          headers: {
+            'ngrok-skip-browser-warning': 'true' 
+          }
+        }
       );
 
-      if (response) {
+      if (response.data && response.data.transactions) {
         setTransactions(response.data.transactions);
-        setIsLoading(false);
+        setPreferredCurrency(response.data.preferredCurrency)
+        console.log(`Set ${response.data.transactions.length} transactions`);
+      } else {
+        console.log("No transactions found in response");
+        setTransactions([]);
       }
+      setIsLoading(false);
     } catch (error) {
-      console.log(error);
+      console.error("Error fetching transactions:", error);
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
     fetchAllTransaction();
-  }, [userData]);
+  }, [userId]);
 
   // Get month and year from currentMonth string
   const getMonthDetails = () => {
@@ -118,33 +138,60 @@ const ExpenseIncomeVisualization = () => {
   };
 
   useEffect(() => {
-    // Filter transactions by current month
-    // console.log(transactions);
-    if (transactions && transactions.length > 0) {
-      const convertedTransactions = transactions.map((transaction) => ({
-        ...transaction,
-        amount: currencyConverter(
-          transaction.amount,
-          transaction.currency,
-          userData?.preferredCurrency
-        ),
-      }));
-      const fulTransaction = convertedTransactions?.filter((transaction) => {
+    if (transactions && transactions.length > 0 && preferredCurrency) {
+      console.log("Processing transactions for visualization:", transactions.length);
+      console.log("User preferred currency:", preferredCurrency);
+      
+      const convertedTransactions = transactions.map((transaction) => {
+        // Make sure the transaction amount is a number
+        const originalAmount = parseFloat(transaction.amount);
+        
+        // Make sure we have valid currency codes
+        const fromCurrency = getCurrencyCode(transaction.currency) || 'NPR';
+        const toCurrency = getCurrencyCode(preferredCurrency) || 'NPR';
+        
+        // Log the conversion details for debugging
+        console.log(`Visualization conversion: ${originalAmount} ${fromCurrency} to ${toCurrency}`);
+        
+        const convertedAmount = currencyConverter(
+          originalAmount,
+          fromCurrency,
+          toCurrency
+        );
+        
+        console.log(`Result: ${convertedAmount}`);
+        
+        return {
+          ...transaction,
+          amount: convertedAmount,
+          // Store original amount and currency for reference
+          originalAmount: originalAmount,
+          originalCurrency: fromCurrency
+        };
+      });
+
+      // Filter transactions by current month
+      const filTransaction = convertedTransactions.filter((transaction) => {
         if (!currentMonth) return true;
         return transaction.date.startsWith(currentMonth);
       });
-      setFilteredTransactions(fulTransaction);
+      
+      console.log(`Filtered to ${filTransaction.length} transactions for visualization`);
+      setFilteredTransactions(filTransaction);
+    } else {
+      console.log("No transactions to process for visualization or missing user currency preferences");
+      setFilteredTransactions([]);
     }
   }, [transactions, userData, currentMonth]);
 
   // Calculate totals
   const income = filteredTransactions
-    ?.filter((t) => t.type === "income")
-    .reduce((sum, t) => sum + t.amount, 0);
+    .filter((t) => t.type === "income")
+    .reduce((sum, t) => sum + parseFloat(t.amount), 0);
 
   const expenses = filteredTransactions
-    ?.filter((t) => t.type === "expense")
-    .reduce((sum, t) => sum + t.amount, 0);
+    .filter((t) => t.type === "expense")
+    .reduce((sum, t) => sum + parseFloat(t.amount), 0);
 
   const balance = income - expenses;
 
@@ -188,7 +235,7 @@ const ExpenseIncomeVisualization = () => {
                     Total Income
                   </p>
                   <p className="text-2xl font-bold text-green-700">
-                    {getCurrencySymbol(userData?.preferredCurrency)}
+                    {getCurrencySymbol(preferredCurrency)}
                     {income.toFixed(2)}
                   </p>
                 </div>
@@ -211,7 +258,7 @@ const ExpenseIncomeVisualization = () => {
                     Total Expenses
                   </p>
                   <p className="text-2xl font-bold text-red-700">
-                    {getCurrencySymbol(userData?.preferredCurrency)}
+                    {getCurrencySymbol(preferredCurrency)}
                     {expenses.toFixed(2)}
                   </p>
                 </div>
@@ -259,7 +306,7 @@ const ExpenseIncomeVisualization = () => {
                       balance >= 0 ? "text-blue-700" : "text-yellow-700"
                     }`}
                   >
-                    {getCurrencySymbol(userData?.preferredCurrency)}
+                    {getCurrencySymbol(preferredCurrency)}
                     {balance.toFixed(2)}
                     {balance < 0 ? " (Deficit)" : ""}
                   </p>
@@ -275,7 +322,7 @@ const ExpenseIncomeVisualization = () => {
         </div>
 
         {/* Now the real thing begins */}
-        <div className=" w-full flex flex-col">
+        <div className="w-full flex flex-col">
           <div className="w-full flex justify-between">
             <div className="flex gap-2 bg-blue-100 rounded-full px-1 py-1">
               <button
@@ -314,7 +361,7 @@ const ExpenseIncomeVisualization = () => {
 
               <button
                 onClick={() => setActiveChart("bar")}
-                className={`px-3 py-2 items-center justify-center rounded-full flex items-centerease-in-out duration-300 transition-all ${
+                className={`px-3 py-2 items-center justify-center rounded-full flex ease-in-out duration-300 transition-all ${
                   activeChart === "bar"
                     ? "bg-blue-500 text-white"
                     : "text-gray-600 hover:bg-gray-100"
@@ -356,6 +403,7 @@ const ExpenseIncomeVisualization = () => {
                 filteredTransactions={filteredTransactions}
                 activeType={activeType}
                 activeChart={activeChart}
+                preferredCurrency={preferredCurrency}
               />
             </div>
           )}

@@ -51,18 +51,16 @@ export default function AuthForm() {
         type: "success",
       });
 
-      console.log(response);
       if (isLogin) {
         localStorage.setItem("yoyo_token", response.data.token);
         setToken(response.data.token);
         
-        setUserData(response.data.userDetails);
+        localStorage.setItem("userId",response.data.userDetails._id);
 
         navigate("/dashboard");
       }
 
-      // Here you might handle redirection or token storage
-      console.log("Response:", response.data);
+      
     } catch (error) {
       setMessage({
         text: error.response?.data?.message || "An error occurred",
