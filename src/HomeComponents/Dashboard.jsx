@@ -31,7 +31,7 @@ import {
 import axios from "axios";
 import endpoint from "../api";
 import MyContext from "../Context";
-import { getCurrencySymbol, currencyConverter, getCurrencyCode } from "../CurrencyUtils";
+import { getCurrencySymbol, currencyConverter, getCurrencyCode } from "../currencyUtils";
 
 const Dashboard = () => {
   const {
