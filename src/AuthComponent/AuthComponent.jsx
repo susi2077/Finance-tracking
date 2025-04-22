@@ -44,7 +44,10 @@ export default function AuthForm() {
       const finalendpoint = isLogin
         ? `${endpoint}/user/login-user`
         : `${endpoint}/user/register-user`;
-      const response = await axios.post(finalendpoint, formData);
+        const response = await axios.post(finalendpoint, formData, {
+          withCredentials: true,
+          
+        });
 
       setMessage({
         text: isLogin ? "Login successful!" : "Registration successful!",
