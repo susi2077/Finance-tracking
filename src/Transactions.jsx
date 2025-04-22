@@ -34,7 +34,7 @@ import {
   TrendingDown,
 } from "lucide-react";
 import MyContext from "./Context";
-import { getCurrencySymbol, getCurrencyCode } from "./CurrencyUtils";
+import { getCurrencySymbol, getCurrencyCode } from "./currencyUtils";
 import axios from "axios";
 import endpoint from "./api";
 
